@@ -89,9 +89,14 @@ def ql_syscall_connect(ql, connect_sockfd, connect_addr, connect_addrlen, *args,
     ql.os.definesyscall_return(regreturn)
 
 
-def ql_syscall_setsockopt(ql, *args, **kw):
-    ql.nprint("setsockopt")
+def ql_syscall_setsockopt(ql, sock_fd, level, option, value, optlen, *args, **kw):
     regreturn = 0
+    if not isinstance(ql.os.fd[sock_fd], socket.socket):
+        regreturn = -1
+    else:
+        regreturn = ql.os.fd[sock_fd].setsockopt(level, option, value, optlen)
+
+    ql.nprint("setsockopt({0}, {1}, {2}, {3}) = {4}".format(sock_fd, level, option, value, optlen, regreturn))
     ql.os.definesyscall_return(regreturn)
 
 
@@ -115,7 +120,7 @@ def ql_syscall_bind(ql, bind_fd, bind_addr, bind_addrlen,  *args, **kw):
     else:
         data = ql.mem.read(bind_addr, bind_addrlen)
 
-    sin_family, = struct.unpack("<h", data[:2])
+    sin_family = struct.unpack("<h", data[:2])[0] or ql.os.fd[bind_fd].family
     port, host = struct.unpack(">HI", data[2:8])
     host = ql_bin_to_ip(host)
 
